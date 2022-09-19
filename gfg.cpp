@@ -1,7 +1,10 @@
 // A C++ program for Prim's Minimum
 // Spanning Tree (MST) algorithm. The program is
 // for adjacency matrix representation of the graph
-#include <bits/stdc++.h>
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <fstream>
 using namespace std;
 
 // Number of vertices in the graph
@@ -10,7 +13,7 @@ using namespace std;
 // A utility function to find the vertex with
 // minimum key value, from the set of vertices
 // not yet included in MST
-int minKey(int key[], bool mstSet[])
+int minKey(unordered_map<int, int> &key, unordered_map<int, bool> &mstSet)
 {
 	// Initialize min value
 	int min = INT_MAX, min_index;
@@ -24,7 +27,7 @@ int minKey(int key[], bool mstSet[])
 
 // A utility function to print the
 // constructed MST stored in parent[]
-void printMST(int parent[], vector<vector<int>> &graph)
+void printMST(unordered_map<int, int> &parent, vector<vector<int>> &graph)
 {
 	cout << "Edge \tWeight\n";
 	for (int i = 1; i < V; i++)
@@ -38,13 +41,16 @@ void printMST(int parent[], vector<vector<int>> &graph)
 void primMST(vector<vector<int>> &graph)
 {
 	// Array to store constructed MST
-	int parent[V];
+	// int parent[V];
+	unordered_map<int, int> parent;
 
 	// Key values used to pick minimum weight edge in cut
-	int key[V];
+	// int key[V];
+	unordered_map<int, int> key;
 
 	// To represent set of vertices included in MST
-	bool mstSet[V];
+	// bool mstSet[V];
+	unordered_map<int, bool> mstSet;
 
 	// Initialize all keys as INFINITE
 	for (int i = 0; i < V; i++)
@@ -85,7 +91,7 @@ void primMST(vector<vector<int>> &graph)
 }
 
 // Driver's code
-int main()
+int main(int argc, char const *argv[])
 {
 	/* Let us create the following graph
 		2 3
@@ -95,15 +101,22 @@ int main()
 	| / \ |
 	(3)-------(4)
 			9	 */
-	vector<vector<int>> graph = { { 0, 2, 0, 6, 0 },
-						{ 2, 0, 3, 8, 5 },
-						{ 0, 3, 0, 0, 7 },
-						{ 6, 8, 0, 0, 9 },
-						{ 0, 5, 7, 9, 0 } };
+
+	string inputFilename(argv[1]);
+	fstream input(inputFilename);
+	
+	int n;
+	input >> n;
+
+	vector<vector<int>> adjMat(n, vector<int>(n));
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
+			input >> adjMat[i][j];
+		}
+	}
 
 	// Print the solution
-	primMST(graph);
-
+	primMST(adjMat);
 	return 0;
 }
 
