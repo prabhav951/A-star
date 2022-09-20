@@ -3,16 +3,17 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <fstream>
+#include <algorithm>
 #include <queue>
 using namespace std;
 
 class Node {
 public:
-	unordered_set<int> visited;
+	vector<int> visited;
 	int currCity;
 	int fcost;
 
-	Node(unordered_set<int> visited, int currCity, int fcost) {
+	Node(vector<int> visited, int currCity, int fcost) {
 		this->currCity = currCity;
 		this->fcost = fcost;
 		this->visited = visited;
@@ -40,14 +41,20 @@ void tsp(vector<vector<int>> &graph, int n) {
 		q.pop();
 
 		if (nd.visited.size() == n && graph[nd.currCity][0] != INT_MAX) {
-			cout << "ANS = " << nd.fcost + graph[nd.currCity][0];
+			cout << "From -> To : Cost\n";
+			for (int i = 0; i < n-1; i++) {
+				cout << nd.visited[i] << " -> " << nd.visited[i+1] << " : " << graph[nd.visited[i]][nd.visited[i+1]] <<"\n";
+			}
+			cout << nd.visited[n-1] << " -> " << nd.visited[0] << " : " << graph[nd.visited[n-1]][nd.visited[0]] << "\n";
+			
+			cout << "\nTotal = " << nd.fcost + graph[nd.currCity][0] << "\n";
 			return;
 		}
 
 		for (int i = 0; i < n; i++) {
-			if (i != nd.currCity && nd.visited.find(i) == nd.visited.end() && graph[nd.currCity][i] != INT_MAX) {
-				unordered_set<int> newVisited = nd.visited;
-				newVisited.insert(i);
+			if (i != nd.currCity && find(nd.visited.begin(), nd.visited.end(), i) == nd.visited.end() && graph[nd.currCity][i] != INT_MAX) {
+				vector<int> newVisited = nd.visited;
+				newVisited.push_back(i);
 				q.push(Node(newVisited, i, nd.fcost + graph[nd.currCity][i]));
 			}
 		}
