@@ -1,29 +1,10 @@
-// A C++ program for Prim's Minimum
-// Spanning Tree (MST) algorithm. The program is
-// for adjacency matrix representation of the graph
 #include <iostream>
 #include <vector>
 #include <unordered_map>
 #include <fstream>
 using namespace std;
 
-// A utility function to find the vertex with
-// minimum key value, from the set of vertices
-// not yet included in MST
-int minKey(vector<int> &vertices, unordered_map<int, int> &key, unordered_map<int, bool> &mstSet)
-{
-	// Initialize min value
-	int min = INT_MAX, min_index, V = vertices.size();
-
-	for (int v = 0; v < V; v++)
-		if (mstSet[vertices[v]] == false && key[vertices[v]] < min)
-			min = key[vertices[v]], min_index = vertices[v];
-
-	return min_index;
-}
-
-// A utility function to print the
-// constructed MST stored in parent[]
+// A utility function to print the constructed MST stored in parent[]
 void printMST(vector<int> &vertices, unordered_map<int, int> &parent, vector<vector<int>> &graph)
 {
 	int V = vertices.size();
@@ -33,11 +14,8 @@ void printMST(vector<int> &vertices, unordered_map<int, int> &parent, vector<vec
 			<< graph[vertices[i]][parent[vertices[i]]] << " \n";
 }
 
-// Function to construct and print MST for
-// a graph represented using adjacency
-// matrix representation
-void primMST(vector<vector<int>> &graph, vector<int> vertices)
-{
+// Function to construct an MST for a graph with given vertices
+int primMST(vector<vector<int>> &graph, vector<int> &vertices) {
 	int V = vertices.size();
 	// Array to store constructed MST
 	unordered_map<int, int> parent;
@@ -62,7 +40,13 @@ void primMST(vector<vector<int>> &graph, vector<int> vertices)
 	for (int count = 0; count < V - 1; count++) {
 		// Pick the minimum key vertex from the
 		// set of vertices not yet included in MST
-		int u = minKey(vertices, key, mstSet);
+		// int u = minKey(vertices, key, mstSet);
+
+		int min = INT_MAX, u;
+
+		for (int v = 0; v < V; v++)
+			if (mstSet[vertices[v]] == false && key[vertices[v]] < min)
+				min = key[vertices[v]], u = vertices[v];
 
 		// Add the picked vertex to the MST Set
 		mstSet[u] = true;
@@ -77,13 +61,21 @@ void primMST(vector<vector<int>> &graph, vector<int> vertices)
 			// vertices of m mstSet[v] is false for vertices
 			// not yet included in MST Update the key only
 			// if graph[u][v] is smaller than key[v]
-			if (graph[u][vertices[v]] && mstSet[vertices[v]] == false
-				&& graph[u][vertices[v]] < key[vertices[v]])
+			if (u != vertices[v] && graph[u][vertices[v]] != INT_MAX && mstSet[vertices[v]] == false && graph[u][vertices[v]] < key[vertices[v]])
 				parent[vertices[v]] = u, key[vertices[v]] = graph[u][vertices[v]];
 	}
 
 	// print the constructed MST
 	printMST(vertices, parent, graph);
+
+	int costOfMst = 0;
+	for (int i = 1; i < V; i++) {
+		if (graph[vertices[i]][parent[vertices[i]]] == INT_MAX)
+			return INT_MAX;
+		costOfMst += graph[vertices[i]][parent[vertices[i]]];
+	}
+
+	return costOfMst;
 }
 
 // Driver's code
@@ -103,7 +95,7 @@ int main(int argc, char const *argv[])
 		}
 	}
 
-	vector<int> vertices = {0, 3, 4};
+	vector<int> vertices = {0, 1, 2, 3};
 
 	// Print the solution
 	primMST(adjMat, vertices);
