@@ -17,6 +17,12 @@ void printMST(vector<int> &vertices, unordered_map<int, int> &parent, vector<vec
 // Function to construct an MST for a graph with given vertices
 int primMST(vector<vector<int>> &graph, vector<int> &vertices) {
 	int V = vertices.size();
+
+	if (V == 0) {
+		cout << "Cost: " << 0 << "\n";
+		return 0;
+	}
+
 	// Array to store constructed MST
 	unordered_map<int, int> parent;
 
@@ -74,6 +80,7 @@ int primMST(vector<vector<int>> &graph, vector<int> &vertices) {
 			return INT_MAX;
 		costOfMst += graph[vertices[i]][parent[vertices[i]]];
 	}
+	cout << "Cost: " << costOfMst << "\n";
 
 	return costOfMst;
 }
@@ -95,7 +102,7 @@ int main(int argc, char const *argv[])
 		}
 	}
 
-	vector<int> vertices = {0, 1, 2, 3};
+	vector<int> vertices = {0, 1, 2, 3, 4};
 
 	// Print the solution
 	primMST(adjMat, vertices);
