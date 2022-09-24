@@ -16,7 +16,7 @@ Input File Format:
 	
 The graph of cities is represented as an adjacency matrix.
 In the TSP solver, the state is represented by a vector of visited cities.
-
+If edge weight is -1, it inficates there is no edge between those 2 cities
 
 Commands to execute
 	g++ tsp.cpp
@@ -63,13 +63,15 @@ using namespace std;
 class Node {
 public:
 	vector<int> visited;	// Set of visited cities in order
+	int countVisited;		// Number of cities visited
 	int currCity;	// current city
 	long long gcost;	// g, the cost taken till now to reach current state
 	long long fcost;	// f = g + h, where h is the heuristic value at current state
 
 	// Parametrized Constructor
-	Node(vector<int> visited, int currCity, long long gcost, long long fcost) {
+	Node(vector<int> visited, int countVisited, int currCity, long long gcost, long long fcost) {
 		this->currCity = currCity;
+		this->countVisited = countVisited;
 		this->fcost = fcost;
 		this->gcost = gcost;
 		this->visited = visited;
@@ -189,8 +191,8 @@ long long primMST(vector<vector<long long>> &graph, vector<int> &vertices) {
  */
 void tspSolver(vector<vector<long long>> &graph, int n) {
 	priority_queue<Node, vector<Node>, Cmp> q;	// Min Heap to store Node objects based on fcost
-	
-	long long f, g, h1, h2, h3, h;
+	long long f, g, h1, h2, h3, h, countNodesExpanded = 0, countNodesFringe = 0;
+
 	/*
 	These variables are used to store intermediate values of fcost, gcost and heuristic values, 
 		while calculating for new Node objects.	
@@ -207,10 +209,11 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 	/* Finding fcost for initial state */
 
 	vector<int> unvisited = findUnvisited({0}, n);	// Since 0 is the start city, it is considered as visited
+	int countUnvisited = unvisited.size();
 	g = 0;	// gcost for initial state is 0
 
 	// Calculate h1
-	if (unvisited.size() == 0) { // If all cities are visited, then h1 = 0
+	if (countUnvisited == 0) { // If all cities are visited, then h1 = 0
 		h1 = 0;
 	}
 	else {
@@ -224,7 +227,7 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 	h2 = primMST(graph, unvisited);
 
 	// Calculate h3
-	if (unvisited.size() == 0) {// If all cities are visited, then h3 = 0
+	if (countUnvisited == 0) {// If all cities are visited, then h3 = 0
 		h3 = 0;
 	}
 	else {
@@ -249,10 +252,11 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 		cout << " f=" << f << "\n\n";
 	#endif
 
-	q.push(Node({0}, 0, g, f));	// Pushing initial state into the min heap
+	q.push(Node({0}, 1, 0, g, f));	// Pushing initial state into the min heap
 	while (!q.empty()) {
 		Node nd = q.top();	// Pop the element with least fcost
 		q.pop();
+		countNodesExpanded++;
 
 		// Debugging
 		# ifdef ENABLE_DEBUG
@@ -267,7 +271,7 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 		// If all cities are visited and
 		// there exists an edge from last city to 0(start city),
 		// then we have reached the goal state
-		if (nd.visited.size() == n && graph[nd.currCity][0] < INT_MAX) {
+		if (nd.countVisited == n && graph[nd.currCity][0] < INT_MAX) {
 			cout << "Goal State Reached!\n";
 			cout << "From -> To : Cost\n";
 			for (int i = 0; i < n-1; i++) {
@@ -276,16 +280,18 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 			cout << nd.visited[n-1] << " -> " << nd.visited[0] << " : " << graph[nd.visited[n-1]][nd.visited[0]] << "\n";
 			
 			cout << "\nTotal = " << nd.gcost + graph[nd.currCity][0] << "\n";
+			cout << "No. of Expanded Nodes: " << countNodesExpanded << "\n";
+			cout << "No. of Generated nodes in Fringe List: " << countNodesFringe << "\n";
 			return;
 		}
 
 		// Converting vector of cities into set for faster search
-		unordered_set<int> sortedVisited(nd.visited.begin(), nd.visited.end());
+		unordered_set<int> setVisited(nd.visited.begin(), nd.visited.end());
 
 		// Finding all neighbours where to move next (Successor Function)
 		for (int i = 0; i < n; i++) {
 			// If there exists an edge from current city to the unvisited neighbour city
-			if (i != nd.currCity && sortedVisited.find(i) == sortedVisited.end() && graph[nd.currCity][i] < INT_MAX) {
+			if (i != nd.currCity && setVisited.find(i) == setVisited.end() && graph[nd.currCity][i] < INT_MAX) {
 				// Consider we visited the neighbour city
 				vector<int> newVisited = nd.visited;
 				newVisited.push_back(i);
@@ -293,10 +299,11 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 				/* Finding fcost for initial state */
 
 				unvisited = findUnvisited(newVisited, n);
+				countUnvisited = unvisited.size();
 				g = nd.gcost + graph[nd.currCity][i];	// gcost for new state = gcost of current state + cost of edge from current state to new state
 				
 				// Calculate h1
-				if (unvisited.size() == 0) { // If all cities are visited, then h1 = 0
+				if (countUnvisited == 0) { // If all cities are visited, then h1 = 0
 					h1 = 0;
 				}
 				else {
@@ -310,7 +317,7 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 				h2 = primMST(graph, unvisited);
 				
 				// Calculate h3
-				if (unvisited.size() == 0) {// If all cities are visited, then h3 = 0
+				if (countUnvisited == 0) {// If all cities are visited, then h3 = 0
 					h3 = 0;
 				}
 				else {
@@ -337,7 +344,8 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 				#endif
 				
 				// Push the Node object of the new state into the Min Heap
-				q.push(Node(newVisited, i, g, f));
+				q.push(Node(newVisited, nd.countVisited+1, i, g, f));
+				countNodesFringe++;
 			}
 		}
 	}
