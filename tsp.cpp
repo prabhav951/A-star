@@ -12,11 +12,18 @@ Input File Format:
 	where
 	N = number of cities
 	dij = distance between Cityi and Cityj
-	If an edge between Cities i and j doesn't exist, then the input for the cell (i, j) should be -1
-	
+	If an edge between Cities i and j doesn't exist, then dij = -1
+	In code we replace it with INT_MAX, which is considered as infinity
+
+Assume start city is 0.
 The graph of cities is represented as an adjacency matrix.
 In the TSP solver, the state is represented by a vector of visited cities.
-If edge weight is -1, it inficates there is no edge between those 2 cities
+If edge weight is -1, it indicates there is no edge between those 2 cities.
+
+Heuristic used is, h = h1 + h2 + h3, is the heuristic function, where
+		h1 = distance to the nearest unvisited city from the current city
+		h2 = estimated distance to travel all the unvisited cities (MST heuristic used here)
+		h3 = nearest distance from an unvisited city to the start city
 
 Commands to execute
 	g++ tsp.cpp
@@ -62,13 +69,21 @@ using namespace std;
 // Class to store the state (set of visited cities) and its metadata, like current city, gcost (Cost covered till now) and fcost (gcost + heuristic)
 class Node {
 public:
-	vector<int> visited;	// Set of visited cities in order
+	vector<int> visited;	// This is the STATE. Set of visited cities in order
 	int countVisited;		// Number of cities visited
 	int currCity;	// current city
 	long long gcost;	// g, the cost taken till now to reach current state
 	long long fcost;	// f = g + h, where h is the heuristic value at current state
 
-	// Parametrized Constructor
+	/**
+	 * Constructor to initialize the state
+	 * 
+	 * @param visited: Set of visited cities in order
+	 * @param countVisited: Number of cities visited
+	 * @param currCity: current city
+	 * @param gcost: g, the cost taken till now to reach current state
+	 * @param fcost: f = g + h, where h is the heuristic value at current state
+	 */ 
 	Node(vector<int> visited, int countVisited, int currCity, long long gcost, long long fcost) {
 		this->currCity = currCity;
 		this->countVisited = countVisited;
@@ -81,7 +96,8 @@ public:
 // Comparator Class used to make the Min Heap for "Node" objects, based on fcost
 class Cmp {
 public:
-	// The priority_queue uses this function to maintain the elements sorted in a way that preserves heap properties (i.e., that the element popped is the last according to this strict weak ordering)
+	// The priority_queue uses this function to maintain the elements sorted in a way that preserves heap properties
+	// (i.e., that the element popped is the last according to this strict weak ordering)
   bool operator()(Node& nd1, Node& nd2) {
     return nd1.fcost > nd2.fcost;
   }
@@ -115,6 +131,7 @@ long long primMST(vector<vector<long long>> &graph, vector<int> &vertices) {
 	int V = vertices.size();
 
 	if (V == 0) {
+		// Debugging
 		#ifdef ENABLE_DEBUG
 			cout << "MST Cost: " << 0 << "\n";
 		#endif
@@ -161,7 +178,7 @@ long long primMST(vector<vector<long long>> &graph, vector<int> &vertices) {
 				parent[vertices[v]] = u, key[vertices[v]] = graph[u][vertices[v]];
 	}
 
-	// Print the MST
+	// Debugging - Print the MST
 	#ifdef ENABLE_DEBUG
 		V == 1 && (cout << "Edge \tWeight\n");
 		for (int i = 1; i < V; i++)
@@ -177,6 +194,7 @@ long long primMST(vector<vector<long long>> &graph, vector<int> &vertices) {
 		costOfMst += graph[vertices[i]][parent[vertices[i]]];
 	}
 
+	// Debugging
 	#ifdef ENABLE_DEBUG
 		cout << "MST Cost: " << costOfMst << "\n";
 	#endif
@@ -268,84 +286,95 @@ void tspSolver(vector<vector<long long>> &graph, int n) {
 			cout << " f=" << nd.fcost << "\n\n";
 		#endif
 
-		// If all cities are visited and
-		// there exists an edge from last city to 0(start city),
-		// then we have reached the goal state
-		if (nd.countVisited == n && graph[nd.currCity][0] < INT_MAX) {
+		// Goal State Reached: If all cities are visited, and we return to the start city
+		if (nd.countVisited == n+1) {
 			cout << "Goal State Reached!\n";
 			cout << "From -> To : Cost\n";
-			for (int i = 0; i < n-1; i++) {
+			for (int i = 0; i < n; i++) {
 				cout << nd.visited[i] << " -> " << nd.visited[i+1] << " : " << graph[nd.visited[i]][nd.visited[i+1]] <<"\n";
 			}
-			cout << nd.visited[n-1] << " -> " << nd.visited[0] << " : " << graph[nd.visited[n-1]][nd.visited[0]] << "\n";
 			
-			cout << "\nTotal = " << nd.gcost + graph[nd.currCity][0] << "\n";
+			cout << "\nCost of TSP path = " << nd.gcost << "\n";
 			cout << "No. of Expanded Nodes: " << countNodesExpanded << "\n";
 			cout << "No. of Generated nodes in Fringe List: " << countNodesFringe << "\n";
 			return;
 		}
-
-		// Converting vector of cities into set for faster search
-		unordered_set<int> setVisited(nd.visited.begin(), nd.visited.end());
-
-		// Finding all neighbours where to move next (Successor Function)
-		for (int i = 0; i < n; i++) {
-			// If there exists an edge from current city to the unvisited neighbour city
-			if (i != nd.currCity && setVisited.find(i) == setVisited.end() && graph[nd.currCity][i] < INT_MAX) {
-				// Consider we visited the neighbour city
+		// The state before Goal State: All n cities are visited
+		else if (nd.countVisited == n) {
+			// Check if there exists an edge from nth visited city to start city (0),
+			if (graph[nd.currCity][0] < INT_MAX) {
+				// Consider we visited the start city again
 				vector<int> newVisited = nd.visited;
-				newVisited.push_back(i);
-
-				/* Finding fcost for initial state */
-
-				unvisited = findUnvisited(newVisited, n);
-				countUnvisited = unvisited.size();
-				g = nd.gcost + graph[nd.currCity][i];	// gcost for new state = gcost of current state + cost of edge from current state to new state
-				
-				// Calculate h1
-				if (countUnvisited == 0) { // If all cities are visited, then h1 = 0
-					h1 = 0;
-				}
-				else {
-					h1 = INT_MAX;
-					for (auto &vertex : unvisited) {
-						h1 = min(h1, graph[i][vertex]);
-					}
-				}
-				
-				// Calculate h2
-				h2 = primMST(graph, unvisited);
-				
-				// Calculate h3
-				if (countUnvisited == 0) {// If all cities are visited, then h3 = 0
-					h3 = 0;
-				}
-				else {
-					h3 = INT_MAX;
-					for (auto &vertex : unvisited) {
-						h3 = min(h3, graph[vertex][0]);
-					}
-				}
-				h = h1+h2+h3;
-				f = g + h;
-
-				// Debugging
-				#ifdef ENABLE_DEBUG
-					cout << YELLOW << "PUSH\n" << RESET;
-					for (auto &vertex : newVisited) {
-						cout << " -> " << vertex;
-					}
-					cout << "\nh1=" << h1;
-					cout << " h2=" << h2;
-					cout << " h3=" << h3;
-					cout << " h=" << h;
-					cout << " g=" << g;
-					cout << " f=" << f << "\n\n";
-				#endif
-				
-				// Push the Node object of the new state into the Min Heap
-				q.push(Node(newVisited, nd.countVisited+1, i, g, f));
+				newVisited.push_back(0);
+				g = nd.gcost + graph[nd.currCity][0];
+				f = g + 0;
+				q.push(Node(newVisited, nd.countVisited+1, 0, g, f));
 				countNodesFringe++;
+			}
+		}
+		else {
+			// Converting vector of cities into set for faster search
+			unordered_set<int> setVisited(nd.visited.begin(), nd.visited.end());
+
+			// Finding all neighbours where to move next (Successor Function)
+			for (int i = 0; i < n; i++) {
+				// If there exists an edge from current city to the unvisited neighbour city
+				if (i != nd.currCity && setVisited.find(i) == setVisited.end() && graph[nd.currCity][i] < INT_MAX) {
+					// Consider we visited the neighbour city
+					vector<int> newVisited = nd.visited;
+					newVisited.push_back(i);
+
+					/* Finding fcost for newly generated state */
+
+					unvisited = findUnvisited(newVisited, n);
+					countUnvisited = unvisited.size();
+					g = nd.gcost + graph[nd.currCity][i];	// gcost for new state = gcost of current state + cost of edge from current state to new state
+					
+					// Calculate h1
+					if (countUnvisited == 0) { // If all cities are visited, then h1 = 0
+						h1 = 0;
+					}
+					else {
+						h1 = INT_MAX;
+						for (auto &vertex : unvisited) {
+							h1 = min(h1, graph[i][vertex]);
+						}
+					}
+					
+					// Calculate h2
+					h2 = primMST(graph, unvisited);
+					
+					// Calculate h3
+					if (countUnvisited == 0) {// If all cities are visited, then h3 = 0
+						h3 = 0;
+					}
+					else {
+						h3 = INT_MAX;
+						for (auto &vertex : unvisited) {
+							h3 = min(h3, graph[vertex][0]);
+						}
+					}
+					h = h1+h2+h3;
+					f = g + h;
+
+					// Debugging
+					#ifdef ENABLE_DEBUG
+						cout << YELLOW << "PUSH\n" << RESET;
+						for (auto &vertex : newVisited) {
+							cout << " -> " << vertex;
+						}
+						cout << "\nh1=" << h1;
+						cout << " h2=" << h2;
+						cout << " h3=" << h3;
+						cout << " h=" << h;
+						cout << " g=" << g;
+						cout << " f=" << f << "\n\n";
+					#endif
+					
+					// Push the Node object of the new state into the Min Heap
+					q.push(Node(newVisited, nd.countVisited+1, i, g, f));
+					countNodesFringe++;
+				}
 			}
 		}
 	}
@@ -358,6 +387,11 @@ int main(int argc, char const *argv[]) {
 	// Scan filename input from command line
 	string inputFilename(argv[1]);
 	fstream input(inputFilename);
+	// If input file doesn't exist, exit
+	if (!input) {
+		cerr << "File doesn't exist\n";
+		exit(1);
+	}	
 	
 	// Scan number of vertices
 	int n;
@@ -374,5 +408,6 @@ int main(int argc, char const *argv[]) {
 	}
 
 	tspSolver(adjMat, n);
+	input.close();
 	return 0;
 }
